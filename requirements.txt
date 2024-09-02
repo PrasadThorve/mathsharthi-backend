@@ -1,0 +1,10 @@
+fitz
+google.generativeai
+io
+base64
+flask_cors
+PIL
+os
+dotenv
+flask
+authlib
