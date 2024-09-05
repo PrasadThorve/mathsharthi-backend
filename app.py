@@ -34,6 +34,9 @@ from ai_writer import get_gemini_response
 ######### Routes #########
 from routes.auth_routes import auth_routes
 
+### importing db functions
+from utils.db_functions import check_api_usage, update_api_usage
+
 
 
 dotenv.load_dotenv()
@@ -187,8 +190,67 @@ def chat():
     response_messages = stream_llm_response(api_key, messages)
     return jsonify({"messages": response_messages})
 
+# @app.route('/api/upload', methods=['POST'])
+# @jwt_required()
+# def upload():
+    
+#     current_user_email = get_jwt_identity() #assuming jwt token contains the user email
+    
+#     #check the current usage
+#     usage_limit = 2
+#     current_usage = check_api_usage(current_user_email, 'api/upload')
+    
+#     if current_usage is None:
+#         return jsonify({"error": "Could not retrieve API usage. Please try again later."}), 500
+    
+#     if current_usage >= usage_limit:
+#         return jsonify({"error": "Your free quota is exhausted. Please take a subscription to use this functionality."}), 403
+    
+#     if 'file' not in request.files:
+#         return jsonify({"error": "No file part"}), 400
+    
+#     file = request.files['file']
+    
+#     if file.filename == '':
+#         return jsonify({"error": "No selected file"}), 400
+
+#     if file and file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+#         raw_img = Image.open(file)
+#         img_base64 = get_image_base64(raw_img)
+#         return jsonify({"image_url": f"data:image/jpeg;base64,{img_base64}"})
+    
+#     elif file and file.filename.lower().endswith('.pdf'):
+#         images = pdf_to_images(file)
+#         img_urls = [f"data:image/jpeg;base64,{get_image_base64(img)}" for img in images]
+#         return jsonify({"image_urls": img_urls})
+    
+#     else:
+#         return jsonify({"error": "Unsupported file type"}), 400
+        
+#     # Update usage count
+#     update_api_usage(current_user_email, 'upload')
+    
+#     return jsonify(response_data)
+
+#updated code 
 @app.route('/api/upload', methods=['POST'])
+@jwt_required()  # Ensure the user is logged in
 def upload():
+    current_user_email = get_jwt_identity()  # Assuming the JWT token contains the user's email
+
+    # Check current usage
+    usage_limit = 2  # Update to desired limit
+    current_usage = check_api_usage(current_user_email, 'api/upload')
+    print("current email: ", current_user_email)
+    print("current usage",current_usage)
+
+    if current_usage is None:
+        return jsonify({"error": "Could not retrieve API usage. Please try again later."}), 500
+
+    if current_usage >= usage_limit:
+        print("Your free quota is exhausted. Please take a subscription to use this functionality.")
+        return jsonify({"error": "Your free quota is exhausted. Please take a subscription to use this functionality."}), 403
+
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
     
@@ -200,14 +262,22 @@ def upload():
     if file and file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
         raw_img = Image.open(file)
         img_base64 = get_image_base64(raw_img)
-        return jsonify({"image_url": f"data:image/jpeg;base64,{img_base64}"})
+        response_data = {"image_url": f"data:image/jpeg;base64,{img_base64}"}
     
     elif file and file.filename.lower().endswith('.pdf'):
         images = pdf_to_images(file)
         img_urls = [f"data:image/jpeg;base64,{get_image_base64(img)}" for img in images]
-        return jsonify({"image_urls": img_urls})
+        response_data = {"image_urls": img_urls}
     
-    return jsonify({"error": "Unsupported file type"}), 400
+    else:
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    # Update usage count
+    update_api_usage(current_user_email, 'api/upload')
+
+    return jsonify(response_data)
+
+
 
 #api for ai_writer
 @app.route('/api/ai_writer', methods=['POST'])
@@ -291,7 +361,7 @@ def login():
             return jsonify({"error": "Invalid credentials"}), 401
 
         # Create JWT token
-        access_token = create_access_token(identity=user['id'])
+        access_token = create_access_token(identity=user['email'])
         return jsonify({"access_token": access_token}), 200
 
     except mysql.connector.Error as err:
@@ -301,8 +371,13 @@ def login():
 @app.route('/protected', methods=['GET'])
 @jwt_required()
 def protected():
-    current_user_id = get_jwt_identity()
-    return jsonify({"message": f"This is a protected route. Your user ID is {current_user_id}."})
+     # This will return the identity of the JWT (typically the user's email or ID)
+    current_user_email = get_jwt_identity()
+    print(f"Current user email: {current_user_email}")  # This will print to the console
+    return jsonify({
+        "message": "This is a protected route",
+        "user_email": current_user_email
+    })
 
 
 #google oauth api calls
