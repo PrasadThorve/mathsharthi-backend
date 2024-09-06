@@ -239,7 +239,7 @@ def upload():
     current_user_email = get_jwt_identity()  # Assuming the JWT token contains the user's email
 
     # Check current usage
-    usage_limit = 2  # Update to desired limit
+    usage_limit = 5  # Update to desired limit
     current_usage = check_api_usage(current_user_email, 'api/upload')
     print("current email: ", current_user_email)
     print("current usage",current_usage)
