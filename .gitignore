@@ -1,3 +1,4 @@
 .env
 mathenv/
 __pycache__/
+*.pyc
